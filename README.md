@@ -64,6 +64,10 @@ python main.py
 └── tests/               # 18 тестов (pytest)
 ```
 
+## 🚀 Деплой
+
+Подробная инструкция по деплою: [DEPLOY.md](DEPLOY.md)
+
 ## 🧪 Тесты
 
 ```bash
