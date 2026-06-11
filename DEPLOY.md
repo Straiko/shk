@@ -1,58 +1,71 @@
-# 🚀 Деплой SHK Bot
+<p align="center">
+  <img src="https://img.shields.io/badge/version-3.0.2-blue?style=for-the-badge" alt="version">
+  <img src="https://img.shields.io/badge/python-3.12+-green?style=for-the-badge&logo=python&logoColor=white" alt="python">
+  <img src="https://img.shields.io/badge/license-MIT-orange?style=for-the-badge" alt="license">
+  <img src="https://img.shields.io/badge/telegram-bot%20api-26458B?style=for-the-badge&logo=telegram&logoColor=white" alt="telegram">
+</p>
 
-## Локальный запуск
+<h1 align="center">SHK Bot</h1>
+
+<p align="center">
+  Telegram-бот для сканирования и генерации штрих-кодов<br>
+  <sub>Code128 · QR-коды · OCR · Автодеплой</sub>
+</p>
+
+---
+
+## Быстрый старт
 
 ```bash
-git clone https://github.com/Straiko/shk.git
-cd shk
-python3 -m venv venv
-source venv/bin/activate
+git clone https://github.com/Straiko/shk.git && cd shk
+python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
-# Вписать BOT_TOKEN
 python main.py
 ```
 
-## VPS / Выделенный сервер
+---
 
-### 1. Подключение к серверу
+## Платформы для деплоя
+
+### VPS / Выделенный сервер
+
+> Полный контроль, стабильность, 24/7 работа
+
+#### Шаг 1 — Подготовка сервера
 
 ```bash
-ssh user@your-server-ip
-```
-
-### 2. Установка зависимостей
-
-```bash
+# Ubuntu / Debian
 sudo apt update && sudo apt install -y python3 python3-venv git
-git clone https://github.com/Straiko/shk.git
-cd shk
-python3 -m venv venv
-source venv/bin/activate
+
+# Клонировать и установить
+git clone https://github.com/Straiko/shk.git /opt/shk
+cd /opt/shk
+python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 3. Настройка .env
+#### Шаг 2 — Конфигурация
 
 ```bash
 cp .env.example .env
 nano .env
 ```
 
-Заполнить:
-- `BOT_TOKEN` — токен от @BotFather
-- `OCR_API_KEY` — ключ OCR.space (или оставить `helloworld`)
-- `ADMIN_USER_ID` — ваш Telegram ID
+| Переменная | Описание |
+|------------|----------|
+| `BOT_TOKEN` | Токен от [@BotFather](https://t.me/BotFather) |
+| `OCR_API_KEY` | Ключ [OCR.space](https://ocr.space/ocrapi/freekey) (или `helloworld`) |
+| `ADMIN_USER_ID` | Ваш Telegram ID |
+| `RATE_LIMIT_SECONDS` | Интервал между запросами (по умолчанию `2`) |
+| `MAX_FILE_SIZE_MB` | Макс. размер файла (по умолчанию `20`) |
 
-### 4. systemd сервис (автозапуск)
+#### Шаг 3 — Автозапуск (systemd)
 
 ```bash
-sudo nano /etc/systemd/system/shk-bot.service
-```
-
-```ini
+sudo tee /etc/systemd/system/shk-bot.service > /dev/null <<EOF
 [Unit]
-Description=SHK Bot — сканер штрих-кодов
+Description=SHK Bot
 After=network.target
 
 [Service]
@@ -65,48 +78,85 @@ RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
-```
+EOF
 
-```bash
 sudo systemctl daemon-reload
 sudo systemctl enable shk-bot
 sudo systemctl start shk-bot
 ```
 
-### 5. Команды управления
+#### Управление
+
+| Команда | Действие |
+|---------|----------|
+| `sudo systemctl status shk-bot` | Статус |
+| `sudo systemctl restart shk-bot` | Перезапуск |
+| `sudo systemctl stop shk-bot` | Остановка |
+| `sudo journalctl -u shk-bot -f` | Логи |
+
+---
+
+### Render
+
+> Бесплатно, без сервера, автоматический деплой
+
+1. Перейти на [render.com](https://render.com) → **New** → **Background Worker**
+2. Подключить GitHub: `Straiko/shk`
+3. Настроить:
+
+| Параметр | Значение |
+|----------|----------|
+| Runtime | Python 3 |
+| Build Command | `pip install -r requirements.txt` |
+| Start Command | `python main.py` |
+
+4. Добавить **Environment Variables**:
+   - `BOT_TOKEN` → ваш токен
+   - `ADMIN_USER_ID` → ваш ID
+5. **Deploy**
+
+---
+
+### Railway
+
+> Быстрый старт, GitHub интеграция
 
 ```bash
-sudo systemctl status shk-bot    # статус
-sudo systemctl restart shk-bot   # перезапуск
-sudo systemctl stop shk-bot      # остановка
-sudo journalctl -u shk-bot -f    # логи в реальном времени
+npm install -g @railway/cli
+railway login
+railway init
+railway variables set BOT_TOKEN=your_token
+railway variables set ADMIN_USER_ID=your_id
+railway up
 ```
 
-## Docker
+---
 
-### Dockerfile
+### Docker
+
+> Изолированная среда, переносимость
+
+#### Dockerfile
 
 ```dockerfile
 FROM python:3.12-slim
 
 WORKDIR /app
-
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
-
 CMD ["python", "main.py"]
 ```
 
-### Сборка и запуск
+#### Запуск
 
 ```bash
 docker build -t shk-bot .
 docker run -d --name shk-bot --restart unless-stopped --env-file .env shk-bot
 ```
 
-### docker-compose.yml
+#### docker-compose.yml
 
 ```yaml
 version: '3.8'
@@ -123,57 +173,33 @@ services:
 docker compose up -d
 ```
 
-## Render (бесплатный хостинг)
+---
 
-1. Создать аккаунт на [render.com](https://render.com)
-2. New → Background Worker
-3. Подключить GitHub репозиторий `Straiko/shk`
-4. Настройки:
-   - **Runtime**: Python 3
-   - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `python main.py`
-5. Добавить переменные окружения в настройках сервиса:
-   - `BOT_TOKEN`
-   - `OCR_API_KEY`
-   - `ADMIN_USER_ID`
-6. Deploy
-
-## Railway
+## Проверка
 
 ```bash
-# Установить CLI
-npm install -g @railway/cli
-
-# Войти
-railway login
-
-# Инициализировать проект
-railway init
-
-# Добавить переменные
-railway variables set BOT_TOKEN=your_token
-railway variables set ADMIN_USER_ID=your_id
-
-# Деплой
-railway up
-```
-
-## Проверка работоспособности
-
-```bash
-# Проверить, что бот отвечает
+# Бот жив?
 curl -s "https://api.telegram.org/botYOUR_TOKEN/getMe" | python3 -m json.tool
 
-# Проверить логи
+# Логи
 tail -f bot.log
 ```
 
-## Частые проблемы
+---
+
+## Устранение проблем
 
 | Проблема | Решение |
 |----------|---------|
-| Бот не отвечает | Проверить `BOT_TOKEN` в `.env` |
-| `ModuleNotFoundError` | Активировать venv: `source venv/bin/activate` |
-| Ошибка SQLite | Проверить права на файл `data/bot.db` |
-| Бот падает через время | Проверить `Restart=always` в systemd |
-| Rate limit срабатывает | Увеличить `RATE_LIMIT_SECONDS` |
+| Бот не отвечает | Проверьте `BOT_TOKEN` в `.env` |
+| `ModuleNotFoundError` | Активируйте venv: `source venv/bin/activate` |
+| Ошибка SQLite | Проверьте права на `data/bot.db` |
+| Бот падает | Убедитесь что `Restart=always` в systemd |
+| Rate limit | Увеличьте `RATE_LIMIT_SECONDS` |
+| Не видит переменные | Проверьте `.env` файл рядом с `main.py` |
+
+---
+
+<p align="center">
+  <sub>Made with ❤️ by <a href="https://github.com/Straiko">Straiko</a></sub>
+</p>
