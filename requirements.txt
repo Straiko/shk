@@ -1,0 +1,10 @@
+# === Production dependencies ===
+pyTelegramBotAPI==4.14.0
+python-barcode==0.15.1
+Pillow==10.2.0
+zxing-cpp==2.2.0
+requests==2.31.0
+python-dotenv==1.0.0
+
+# === Development dependencies ===
+pytest==8.0.0

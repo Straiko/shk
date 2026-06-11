@@ -1,0 +1,34 @@
+# Виртуальное окружение
+venv/
+.venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Временные файлы бота
+*.png
+*.jpg
+*.jpeg
+bot.log
+
+# Секреты
+.env
+
+# Системные библиотеки (не хранить в git!)
+*.so
+*.so.*
+*.dll
+*.dylib
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
