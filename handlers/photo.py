@@ -8,6 +8,7 @@ from config import Config
 from services.scanner import scan_barcodes
 from services.ocr import scan_text_ocr
 from handlers.barcode import send_barcode_image
+from handlers.subscription_check import check_and_block
 from utils.file_manager import temp_image
 from utils.rate_limiter import RateLimiter, rate_limit
 from utils.db import log_activity
@@ -22,6 +23,8 @@ def register(bot: telebot.TeleBot, config: Config, limiter: RateLimiter) -> None
     @rate_limit(limiter, bot)
     def handle_photo(message: telebot.types.Message) -> None:
         """Обработка входящего фото: сканирование ШК + OCR + генерация баркода."""
+        if check_and_block(bot, message):
+            return
         user_id = message.from_user.id
         bot.send_chat_action(message.chat.id, "typing")
 

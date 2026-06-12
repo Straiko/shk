@@ -19,7 +19,9 @@ class Config:
     num_threads: int = 4
     admin_user_id: int | None = None
     miniapp_url: str | None = None
-    version: str = "3.0.2"
+    channel_username: str = "ozonwariors"
+    max_bot_link: str = "https://max.ru/id771692758487_bot"
+    version: str = "3.1.0"
 
 
 def load_config() -> Config:
@@ -46,4 +48,6 @@ def load_config() -> Config:
         num_threads=int(os.getenv("NUM_THREADS", "4")),
         admin_user_id=admin_user_id,
         miniapp_url=os.getenv("MINIAPP_URL"),
+        channel_username=os.getenv("CHANNEL_USERNAME", "ozonwariors"),
+        max_bot_link=os.getenv("MAX_BOT_LINK", "https://max.ru/id771692758487_bot"),
     )

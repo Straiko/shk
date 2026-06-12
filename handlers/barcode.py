@@ -6,6 +6,7 @@ import barcode as barcode_lib
 from barcode.writer import ImageWriter
 
 from config import Config
+from handlers.subscription_check import check_and_block
 from utils.file_manager import temp_image
 from utils.rate_limiter import RateLimiter, rate_limit
 from utils.db import log_activity
@@ -40,6 +41,8 @@ def register(bot: telebot.TeleBot, config: Config, limiter: RateLimiter) -> None
     @rate_limit(limiter, bot)
     def generate_and_send_barcode(message: telebot.types.Message) -> None:
         """Любой текст → генерация штрих-кода (catch-all handler)."""
+        if check_and_block(bot, message):
+            return
         text_to_encode = message.text.strip()
         
         if not text_to_encode:

@@ -12,6 +12,7 @@ from config import load_config
 from bot import create_bot
 from utils.rate_limiter import RateLimiter
 from utils.db import init_db
+from utils.scheduler import start_scheduler
 from handlers import commands, photo, barcode, admin
 
 
@@ -49,11 +50,16 @@ def main() -> None:
     photo.register(bot, config, limiter)
     barcode.register(bot, config, limiter)
 
+    # Запуск планировщика (рассылка в 6:12)
+    from utils import db as db_module
+    start_scheduler(bot, db_module)
+
     logger.info(
-        "⚙️ Потоки: %d | Rate limit: %dс | Макс. файл: %dMB",
+        "⚙️ Потоки: %d | Rate limit: %dс | Макс. файл: %dMB | Канал: @%s",
         config.num_threads,
         config.rate_limit_seconds,
         config.max_file_size_mb,
+        config.channel_username,
     )
 
     # Запуск с автоматическим переподключением

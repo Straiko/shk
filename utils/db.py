@@ -141,3 +141,11 @@ def delete_last_activities(limit: int = 5) -> None:
                 )
             """, (limit,))
             conn.commit()
+
+
+def get_all_user_ids() -> list[int]:
+    """Получить все ID пользователей для рассылки."""
+    with db_lock:
+        with sqlite3.connect(DB_PATH) as conn:
+            rows = conn.execute("SELECT user_id FROM users").fetchall()
+            return [row[0] for row in rows]
