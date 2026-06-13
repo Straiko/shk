@@ -47,8 +47,9 @@ def register(bot: telebot.TeleBot, config: Config) -> None:
             "⚡️ <b>Команды:</b>\n"
             "/version — версия бота\n"
             "/help — эта справка\n\n"
-            "📱 <b>Также доступен в MAX:</b>\n"
-            f"{MAX_BOT_LINK}",
+            "📱 <b>Также доступен в:</b>\n"
+            f"MAX: {MAX_BOT_LINK}\n"
+            "VK: https://vk.com/club239550562",
         )
 
     logger.info("Обработчики команд зарегистрированы")

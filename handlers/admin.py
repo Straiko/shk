@@ -5,7 +5,7 @@ import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from config import Config
 from utils.rate_limiter import RateLimiter, rate_limit
-from utils.db import get_stats, get_recent_activity, get_users, DB_PATH, db_lock
+from utils.db import get_stats, get_recent_activity, get_users, get_all_user_ids, DB_PATH, db_lock
 import sqlite3
 
 logger = logging.getLogger(__name__)
@@ -19,9 +19,33 @@ def get_admin_keyboard():
     )
     markup.row(
         InlineKeyboardButton("👥 Пользователи", callback_data="admin_users"),
+        InlineKeyboardButton("📢 Рассылка", callback_data="admin_broadcast")
+    )
+    markup.row(
         InlineKeyboardButton("❌ Закрыть", callback_data="admin_close")
     )
     return markup
+
+def _process_broadcast(message, bot, admin_id):
+    if message.from_user.id != admin_id:
+        bot.reply_to(message, "⛔ Только администратор может делать рассылку.")
+        return
+    text = message.text
+    if not text:
+        bot.reply_to(message, "⛔ Пустое сообщение.")
+        return
+
+    user_ids = get_all_user_ids()
+    sent = 0
+    for uid in user_ids:
+        try:
+            bot.send_message(uid, text)
+            sent += 1
+        except Exception:
+            pass
+
+    bot.reply_to(message, f"✅ Рассылка завершена! Отправлено: {sent} из {len(user_ids)}")
+
 
 def register(bot: telebot.TeleBot, config: Config, limiter: RateLimiter) -> None:
     """Регистрация команды /admin и её кнопок."""
@@ -154,7 +178,17 @@ def register(bot: telebot.TeleBot, config: Config, limiter: RateLimiter) -> None
                     text = text[:4000] + "\n... (обрезано)"
                 
             _edit_or_send(bot, call.message, text, get_admin_keyboard())
-            
+
+        elif action == "broadcast":
+            bot.delete_message(call.message.chat.id, call.message.message_id)
+            msg = bot.send_message(
+                call.message.chat.id,
+                "📢 <b>Отправьте текст рассылки</b>\n\nСледующее сообщение будет разослано всем пользователям:",
+                parse_mode="HTML"
+            )
+            bot.register_next_step_handler(msg, _process_broadcast, bot, call.from_user.id)
+            return
+
         bot.answer_callback_query(call.id)
 
     logger.info("Обработчик админки с меню зарегистрирован")
