@@ -13,19 +13,33 @@ YANDEX_OCR_URL = "https://ocr.api.cloud.yandex.net/ocr/v1/recognizeText"
 
 def scan_text_ocr(photo_path: str, api_key: str | None = None) -> list[str]:
     """Распознать текст с изображения через Yandex Cloud OCR."""
-    api_key = os.getenv("YANDEX_API_KEY") or (api_key if api_key and api_key != "helloworld" else None)
-    folder_id = os.getenv("YANDEX_FOLDER_ID")
+    # Приоритет: переданный api_key, либо переменная YANDEX_API_KEY
+    key = (api_key or os.getenv("YANDEX_API_KEY") or "").strip()
 
-    if not api_key:
-        logger.error("YANDEX_API_KEY не задан!")
+    # Защита: если ключ не начинается на AQVN, проверяем OCR_API_KEY
+    if not key.startswith("AQVN"):
+        fallback_key = os.getenv("OCR_API_KEY", "").strip()
+        if fallback_key.startswith("AQVN"):
+            key = fallback_key
+
+    # Если ключ всё ещё отсутствует или это старый ключ другого сервиса (например, K883...)
+    if not key or not key.startswith("AQVN"):
+        logger.error(
+            "YANDEX_API_KEY не задан или указан неверно! "
+            "Получен ключ: %s. Ключ Яндекса должен начинаться на 'AQVN...'. "
+            "Пожалуйста, добавьте переменную YANDEX_API_KEY в панели управления Bothost.",
+            f"'{key[:4]}***'" if key else "None",
+        )
         return []
+
+    folder_id = os.getenv("YANDEX_FOLDER_ID", "").strip() or None
 
     try:
         with open(photo_path, "rb") as f:
             image_base64 = base64.b64encode(f.read()).decode("utf-8")
 
         headers = {
-            "Authorization": f"Api-Key {api_key}",
+            "Authorization": f"Api-Key {key}",
             "Content-Type": "application/json",
         }
         if folder_id:

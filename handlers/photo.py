@@ -64,7 +64,7 @@ def register(bot: telebot.TeleBot, config: Config, limiter: RateLimiter) -> None
                 barcode_codes = [obj.text for obj in decoded_objects]
 
                 # OCR текста
-                ocr_codes = scan_text_ocr(str(photo_path), config.yandex_api_key or config.ocr_api_key)
+                ocr_codes = scan_text_ocr(str(photo_path), config.yandex_api_key)
 
                 # Объединяем все найденные коды
                 codes = list(dict.fromkeys(barcode_codes + ocr_codes))

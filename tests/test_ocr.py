@@ -57,9 +57,19 @@ def test_scan_text_ocr_missing_key(monkeypatch, tmp_path):
     assert scan_text_ocr(str(img_file), api_key=None) == []
 
 
+def test_scan_text_ocr_invalid_key(monkeypatch, tmp_path):
+    """Ключ, не начинающийся на AQVN, отклоняется."""
+    monkeypatch.setenv("YANDEX_API_KEY", "K88309127788957")
+    img_file = tmp_path / "test.jpg"
+    img_file.write_bytes(b"dummy")
+
+    from services.ocr import scan_text_ocr
+    assert scan_text_ocr(str(img_file)) == []
+
+
 def test_scan_text_ocr_success(monkeypatch, tmp_path):
     """Успешный ответ от Yandex OCR возвращает извлеченные коды."""
-    monkeypatch.setenv("YANDEX_API_KEY", "test-key")
+    monkeypatch.setenv("YANDEX_API_KEY", "AQVN_test_key")
     monkeypatch.setenv("YANDEX_FOLDER_ID", "test-folder")
     img_file = tmp_path / "test.jpg"
     img_file.write_bytes(b"dummy")
@@ -81,4 +91,5 @@ def test_scan_text_ocr_success(monkeypatch, tmp_path):
     from services.ocr import scan_text_ocr
     result = scan_text_ocr(str(img_file))
     assert result == ["ii1234567890"]
+
 
