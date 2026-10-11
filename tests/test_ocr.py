@@ -45,3 +45,40 @@ def test_extract_codes_multiple():
     assert len(result) == 2
     assert "ABC12345" in result
     assert "XYZ99887766" in result
+
+
+def test_scan_text_ocr_missing_key(monkeypatch, tmp_path):
+    """При отсутствии API ключа возвращается пустой список."""
+    monkeypatch.delenv("YANDEX_API_KEY", raising=False)
+    img_file = tmp_path / "test.jpg"
+    img_file.write_bytes(b"dummy")
+
+    from services.ocr import scan_text_ocr
+    assert scan_text_ocr(str(img_file), api_key=None) == []
+
+
+def test_scan_text_ocr_success(monkeypatch, tmp_path):
+    """Успешный ответ от Yandex OCR возвращает извлеченные коды."""
+    monkeypatch.setenv("YANDEX_API_KEY", "test-key")
+    monkeypatch.setenv("YANDEX_FOLDER_ID", "test-folder")
+    img_file = tmp_path / "test.jpg"
+    img_file.write_bytes(b"dummy")
+
+    class MockResponse:
+        status_code = 200
+
+        def json(self):
+            return {
+                "result": {
+                    "textAnnotation": {
+                        "fullText": "Код товара: ii1234567890"
+                    }
+                }
+            }
+
+    monkeypatch.setattr("requests.post", lambda *args, **kwargs: MockResponse())
+
+    from services.ocr import scan_text_ocr
+    result = scan_text_ocr(str(img_file))
+    assert result == ["ii1234567890"]
+

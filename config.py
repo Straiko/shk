@@ -22,6 +22,8 @@ class Config:
     channel_username: str = "ozonwariors"
     max_bot_link: str = "https://max.ru/id771692758487_bot"
     version: str = "3.1.0"
+    yandex_api_key: str | None = None
+    yandex_folder_id: str | None = None
 
 
 def load_config() -> Config:
@@ -50,4 +52,6 @@ def load_config() -> Config:
         miniapp_url=os.getenv("MINIAPP_URL"),
         channel_username=os.getenv("CHANNEL_USERNAME", "ozonwariors"),
         max_bot_link=os.getenv("MAX_BOT_LINK", "https://max.ru/id771692758487_bot"),
+        yandex_api_key=os.getenv("YANDEX_API_KEY"),
+        yandex_folder_id=os.getenv("YANDEX_FOLDER_ID"),
     )
