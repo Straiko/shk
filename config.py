@@ -13,7 +13,7 @@ class Config:
     """Настройки бота. Все секреты загружаются из переменных окружения."""
 
     bot_token: str
-    ocr_api_key: str = "K88309127788957"
+    ocr_api_key: str = "helloworld"
     rate_limit_seconds: int = 2
     max_file_size_mb: int = 20
     num_threads: int = 4
