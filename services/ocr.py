@@ -12,34 +12,57 @@ OCR_API_URL = "https://api.ocr.space/parse/image"
 def scan_text_ocr(photo_path: str, api_key: str) -> list[str]:
     """
     Распознать текст с изображения через OCR.space API.
-
-    Возвращает список найденных кодов (только английские буквы/цифры,
-    минимум 5 символов, обязательно содержат хотя бы одну цифру).
+    При сбое Engine 2 делает автоматический fallback на Engine 1.
     """
-    try:
-        with open(photo_path, "rb") as f:
-            response = requests.post(
-                OCR_API_URL,
-                files={"file": f},
-                data={"apikey": api_key, "language": "eng", "OCREngine": "2"},
-                timeout=20,
-            )
+    # Пробуем движки по очереди: сначала 2, при ошибке 503/таймауте — 1
+    for engine in ("2", "1"):
+        try:
+            with open(photo_path, "rb") as f:
+                response = requests.post(
+                    OCR_API_URL,
+                    files={"file": f},
+                    data={
+                        "apikey": api_key,
+                        "language": "eng",
+                        "OCREngine": engine,
+                        "scale": "true",  # улучшает читаемость мелких цифр и ШК
+                    },
+                    timeout=15,
+                )
 
-        if response.status_code != 200:
-            logger.warning("OCR API вернул статус %d", response.status_code)
-            return []
+            if response.status_code == 503:
+                logger.warning(
+                    "OCR Engine %s вернул 503 (сервис перегружен). Пробуем резервный вариант...",
+                    engine,
+                )
+                continue
 
-        result = response.json()
-        if not result.get("ParsedResults"):
-            return []
+            if response.status_code != 200:
+                logger.warning(
+                    "OCR API вернул статус %d: %s",
+                    response.status_code,
+                    response.text[:200],
+                )
+                return []
 
-        text = result["ParsedResults"][0].get("ParsedText", "")
-        return _extract_codes(text)
+            result = response.json()
+            if result.get("IsErroredOnProcessing"):
+                error_details = result.get("ErrorMessage", ["Неизвестная ошибка"])
+                logger.warning("OCR.space внутренняя ошибка: %s", error_details)
+                continue
 
-    except requests.Timeout:
-        logger.warning("OCR API timeout")
-    except Exception:
-        logger.exception("OCR API ошибка")
+            if not result.get("ParsedResults"):
+                return []
+
+            text = result["ParsedResults"][0].get("ParsedText", "")
+            codes = _extract_codes(text)
+            if codes:
+                return codes
+
+        except requests.Timeout:
+            logger.warning("OCR API timeout на Engine %s", engine)
+        except Exception:
+            logger.exception("OCR API непредвиденная ошибка на Engine %s", engine)
 
     return []
 
