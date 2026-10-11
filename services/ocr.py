@@ -1,10 +1,12 @@
 """Распознавание текста через Yandex Cloud OCR API."""
 
 import base64
+import io
 import logging
 import os
 import re
 import requests
+from PIL import Image
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +15,6 @@ YANDEX_OCR_URL = "https://ocr.api.cloud.yandex.net/ocr/v1/recognizeText"
 
 def scan_text_ocr(photo_path: str, api_key: str | None = None) -> list[str]:
     """Распознать текст с изображения через Yandex Cloud OCR."""
-    # Приоритет: переданный api_key, либо переменная YANDEX_API_KEY
     key = (api_key or os.getenv("YANDEX_API_KEY") or "").strip()
 
     # Защита: если ключ не начинается на AQVN, проверяем OCR_API_KEY
@@ -35,8 +36,18 @@ def scan_text_ocr(photo_path: str, api_key: str | None = None) -> list[str]:
     folder_id = os.getenv("YANDEX_FOLDER_ID", "").strip() or None
 
     try:
-        with open(photo_path, "rb") as f:
-            image_base64 = base64.b64encode(f.read()).decode("utf-8")
+        # Нормализуем любое входное изображение (WebP, RGBA и т.д.) в стандартный JPEG
+        try:
+            with Image.open(photo_path) as img:
+                rgb_img = img.convert("RGB")
+                buf = io.BytesIO()
+                rgb_img.save(buf, format="JPEG", quality=95)
+                image_bytes = buf.getvalue()
+        except Exception:
+            with open(photo_path, "rb") as f:
+                image_bytes = f.read()
+
+        image_base64 = base64.b64encode(image_bytes).decode("utf-8")
 
         headers = {
             "Authorization": f"Api-Key {key}",
@@ -45,10 +56,8 @@ def scan_text_ocr(photo_path: str, api_key: str | None = None) -> list[str]:
         if folder_id:
             headers["x-folder-id"] = folder_id
 
-        mime_type = "PNG" if photo_path.lower().endswith(".png") else "JPEG"
-
         payload = {
-            "mimeType": mime_type,
+            "mimeType": "JPEG",
             "languageCodes": ["*"],
             "model": "page",
             "content": image_base64,
