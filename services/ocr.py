@@ -94,8 +94,25 @@ def scan_text_ocr(photo_path: str, api_key: str | None = None) -> list[str]:
 
 def _extract_codes(text: str) -> list[str]:
     """Extract barcode and product codes from OCR text."""
+    # Normalize warehouse prefixes (RDC, WB, OZON) that OCR may separate with spaces, dashes, or Cyrillic letters
+    def _normalize_prefix(m: re.Match) -> str:
+        prefix = m.group(1).upper()
+        if prefix in ("RDC", "РДЦ", "РДС"):
+            return "RDC_"
+        elif prefix in ("WB", "ВБ"):
+            return "WB_"
+        return "OZON_"
+
+    text = re.sub(
+        r"\b(RDC|РДЦ|РДС|WB|ВБ|OZON|ОЗОН)[_\s\-]+(?=\d{5,})",
+        _normalize_prefix,
+        text,
+        flags=re.IGNORECASE,
+    )
+
     codes: list[str] = []
     for word in text.split():
+
         w = word.strip()
 
         # Fix OCR artifacts for Wildberries 'ii' prefix before stripping punctuation.

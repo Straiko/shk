@@ -116,4 +116,13 @@ def test_extract_codes_cyrillic_short_i_wb_prefix():
     assert result == ["ii11039592226"]
 
 
+def test_extract_codes_rdc_and_warehouse_prefixes():
+    """Warehouse prefixes like RDC, WB, OZON separated by space or dash should be normalized."""
+    assert _extract_codes("RDC_1525415416") == ["RDC_1525415416"]
+    assert _extract_codes("RDC 1525415416") == ["RDC_1525415416"]
+    assert _extract_codes("РДЦ 1525415416") == ["RDC_1525415416"]
+    assert _extract_codes("WB 123456789") == ["WB_123456789"]
+
+
+
 
