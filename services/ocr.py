@@ -93,12 +93,36 @@ def scan_text_ocr(photo_path: str, api_key: str | None = None) -> list[str]:
 
 
 def _extract_codes(text: str) -> list[str]:
-    """Извлечь коды из текста."""
+    """Extract barcode and product codes from OCR text."""
     codes: list[str] = []
     for word in text.split():
-        clean = word.strip(".,;:!?'\"()[]{}")
-        clean = re.sub(r"^[iIl1]{2}(?=\d{5,}$)", "ii", clean, flags=re.IGNORECASE)
+        w = word.strip()
+
+        # Fix OCR artifacts for Wildberries 'ii' prefix before stripping punctuation.
+        # Yandex OCR often confuses screen font 'ii' with '!!', '!i', 'i!', '||', or Cyrillic 'й'.
+        # If 3 punctuation/pipe marks precede 10 digits, the first two are 'ii' and third is digit '1' (e.g. !!!538... -> ii1538...).
+        w = re.sub(r"^([!|]{3}|[!|iI]{2}[1!|])(?=\d{10}$)", "ii1", w)
+        w = re.sub(r"^([!|]{2}|[!|][iIl]|[iIl][!|])(?=\d{5,})", "ii", w)
+        w = re.sub(r"^[йЙ](?=\d{5,})", "ii", w)
+
+
+        # Strip surrounding punctuation
+        clean = w.strip(".,;:!?\'\"()[]{}")
+
+        # Handle cases where OCR sees single 'i' or 'l' before 10-12 digits without consuming any digits
+        clean = re.sub(r"^[iIl](?=\d{10,12}$)", "ii", clean)
+
+        # Handle misread prefix like 'i1' or '1i' (must include a letter, never pure digits '11')
+        clean = re.sub(r"^([iIl][1]|[1][iIl])(?=\d{5,}$)", "ii", clean, flags=re.IGNORECASE)
+
+        # Standardize 'II' to lowercase 'ii'
+        clean = re.sub(r"^[iI]{2}(?=\d{5,})", "ii", clean)
+
+        # Validate code structure (alphanumeric with - and _, contains at least one digit)
         if len(clean) > 4 and re.match(r"^[A-Za-z0-9_-]+$", clean):
             if any(c.isdigit() for c in clean):
                 codes.append(clean)
-    return codes
+
+    # Return unique codes preserving original order
+    return list(dict.fromkeys(codes))
+

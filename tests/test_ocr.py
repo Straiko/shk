@@ -93,3 +93,27 @@ def test_scan_text_ocr_success(monkeypatch, tmp_path):
     assert result == ["ii1234567890"]
 
 
+def test_extract_codes_exclamation_marks_wb_prefix():
+    """OCR artifacts '!!', '!!!' or '!i' before digits should be converted to 'ii'."""
+    result = _extract_codes("!!15383958731 !!!5384025333 !i9988776655")
+    assert result == ["ii15383958731", "ii15384025333", "ii9988776655"]
+
+
+
+def test_extract_codes_preserves_digits_starting_with_11():
+    """Numbers starting with 11 must NOT have their actual digits replaced by ii."""
+    result = _extract_codes("!!11039592225 !!11039592226")
+    assert result == ["ii11039592225", "ii11039592226"]
+
+    # Pure numeric code starting with 11 should remain untouched
+    numeric_result = _extract_codes("11039592225 644520696")
+    assert numeric_result == ["11039592225", "644520696"]
+
+
+def test_extract_codes_cyrillic_short_i_wb_prefix():
+    """Cyrillic 'й' misread by OCR should be converted to 'ii'."""
+    result = _extract_codes("й11039592226")
+    assert result == ["ii11039592226"]
+
+
+
