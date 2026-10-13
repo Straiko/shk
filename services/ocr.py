@@ -94,24 +94,21 @@ def scan_text_ocr(photo_path: str, api_key: str | None = None) -> list[str]:
 
 def _extract_codes(text: str) -> list[str]:
     """Extract barcode and product codes from OCR text."""
-    # Normalize warehouse prefixes (RDC, WB, OZON) that OCR may separate with spaces, dashes, or Cyrillic letters
-    def _normalize_prefix(m: re.Match) -> str:
-        prefix = m.group(1).upper()
-        if prefix in ("RDC", "РДЦ", "РДС"):
-            return "RDC_"
-        elif prefix in ("WB", "ВБ"):
-            return "WB_"
-        return "OZON_"
+    # 1. Join any alphanumeric prefix that ends with '_' or '-' if OCR inserted an accidental space before numbers
+    text = re.sub(r"\b([A-Za-z0-9]+[_-])\s+(?=\d{4,})", r"\1", text)
 
-    text = re.sub(
-        r"\b(RDC|РДЦ|РДС|WB|ВБ|OZON|ОЗОН)[_\s\-]+(?=\d{5,})",
-        _normalize_prefix,
-        text,
-        flags=re.IGNORECASE,
-    )
+    # 2. Normalize Cyrillic abbreviations (РДЦ, РДС, ВБ) to standard Latin prefixes
+    text = re.sub(r"\b(РДЦ|РДС)[_\s\-]+(?=\d{5,})", "RDC_", text, flags=re.IGNORECASE)
+    text = re.sub(r"\b(ВБ)[_\s\-]+(?=\d{5,})", "WB_", text, flags=re.IGNORECASE)
+
+    # 3. Join ANY short Latin prefix (2-8 letters, e.g. RDC, BOX, KGT, SKU, OZON, WB, PAL, etc.)
+    # if OCR separated it from a long number (6+ digits) with spaces or dashes.
+    # Exclude common device brand logos like ZEBRA.
+    text = re.sub(r"\b(?!(?:ZEBRA)\b)([A-Za-z]{2,8})\s+(?=\d{6,})", r"\1_", text)
 
     codes: list[str] = []
     for word in text.split():
+
 
         w = word.strip()
 

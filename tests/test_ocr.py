@@ -117,11 +117,15 @@ def test_extract_codes_cyrillic_short_i_wb_prefix():
 
 
 def test_extract_codes_rdc_and_warehouse_prefixes():
-    """Warehouse prefixes like RDC, WB, OZON separated by space or dash should be normalized."""
+    """Warehouse prefixes (RDC, BOX, KGT, SKU, WB, etc.) separated by space or dash should be preserved."""
     assert _extract_codes("RDC_1525415416") == ["RDC_1525415416"]
     assert _extract_codes("RDC 1525415416") == ["RDC_1525415416"]
     assert _extract_codes("РДЦ 1525415416") == ["RDC_1525415416"]
     assert _extract_codes("WB 123456789") == ["WB_123456789"]
+    assert _extract_codes("BOX_ 987654321") == ["BOX_987654321"]
+    assert _extract_codes("KGT 1122334455") == ["KGT_1122334455"]
+    assert _extract_codes("CUSTOM- 5566778899") == ["CUSTOM-5566778899"]
+
 
 
 
