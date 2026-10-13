@@ -21,7 +21,7 @@ class Config:
     miniapp_url: str | None = None
     channel_username: str = "ozonwariors"
     max_bot_link: str = "https://max.ru/id771692758487_bot"
-    version: str = "3.1.0"
+    version: str = "3.2.0"
     yandex_api_key: str | None = None
     yandex_folder_id: str | None = None
 

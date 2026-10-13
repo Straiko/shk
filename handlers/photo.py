@@ -1,7 +1,9 @@
 """Обработка фото: сканирование штрих-кодов + OCR."""
 
+import hashlib
 import logging
 import telebot
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from PIL import Image
 
 from config import Config
@@ -9,11 +11,16 @@ from services.scanner import scan_barcodes
 from services.ocr import scan_text_ocr
 from handlers.barcode import send_barcode_image
 from handlers.subscription_check import check_and_block
+from utils.subscription import is_subscribed
 from utils.file_manager import temp_image
 from utils.rate_limiter import RateLimiter, rate_limit
 from utils.db import log_activity
 
 logger = logging.getLogger(__name__)
+
+# Temporary in-memory cache for long codes (>50 bytes) to respect Telegram's 64-byte callback_data limit
+_LONG_CODE_CACHE: dict[str, str] = {}
+
 
 
 def register(bot: telebot.TeleBot, config: Config, limiter: RateLimiter) -> None:
@@ -85,7 +92,8 @@ def register(bot: telebot.TeleBot, config: Config, limiter: RateLimiter) -> None
                     chosen = max(codes, key=len)
 
                 reply = _format_reply(codes, chosen)
-                bot.reply_to(message, reply)
+                markup = _build_codes_keyboard(codes) if len(codes) > 1 else None
+                bot.reply_to(message, reply, reply_markup=markup)
                 send_barcode_image(bot, message.chat.id, chosen, message.from_user)
                 log_activity(message.from_user, "photo_scan", f"Найдено: {chosen}", file_id=file_id)
 
@@ -93,6 +101,38 @@ def register(bot: telebot.TeleBot, config: Config, limiter: RateLimiter) -> None
                 bot.reply_to(message, "⚠️ Ошибка при обработке фото.")
                 log_activity(message.from_user, "photo_error", f"Ошибка: {str(e)[:50]}", file_id=file_id)
                 logger.exception("Ошибка обработки фото для user %d", user_id)
+
+    @bot.callback_query_handler(func=lambda call: call.data.startswith(("gen_bc:", "gen_bch:")))
+    def handle_barcode_button(call: telebot.types.CallbackQuery) -> None:
+        """Handle inline button click: generate Code128 barcode for selected code."""
+        if not is_subscribed(bot, call.from_user.id):
+            bot.answer_callback_query(
+                call.id,
+                "⚠️ Для использования бота необходимо подписаться на канал!",
+                show_alert=True,
+            )
+            return
+
+        if not limiter.is_allowed(call.from_user.id):
+            bot.answer_callback_query(call.id, "⏳ Подожди немного, не спеши!")
+            return
+
+        if call.data.startswith("gen_bc:"):
+            code = call.data.replace("gen_bc:", "", 1)
+        else:
+            code_hash = call.data.replace("gen_bch:", "", 1)
+            code = _LONG_CODE_CACHE.get(code_hash)
+            if not code:
+                bot.answer_callback_query(
+                    call.id,
+                    "⚠️ Время действия кнопки истекло. Отправьте фото заново.",
+                    show_alert=True,
+                )
+                return
+
+        bot.answer_callback_query(call.id, f"Генерирую: {code[:15]}...")
+        send_barcode_image(bot, call.message.chat.id, code, call.from_user)
+        log_activity(call.from_user, "barcode_button_click", f"Выбран: {code[:50]}")
 
     logger.info("Обработчик фото зарегистрирован")
 
@@ -118,5 +158,36 @@ def _format_reply(codes: list[str], chosen: str) -> str:
     return (
         f"🔍 Найдено (штрих-коды + текст):\n\n"
         f"{all_codes_text}\n\n"
-        f"🏆 Выбран главный код (самый длинный): <code>{chosen}</code>"
+        f"🏆 Выбран главный код (самый длинный): <code>{chosen}</code>\n\n"
+        f"👇 <i>Нажмите кнопку ниже, чтобы получить штрих-код для нужного кода:</i>"
     )
+
+
+def _build_codes_keyboard(codes: list[str]) -> InlineKeyboardMarkup:
+    """Build inline keyboard for generating barcodes from detected codes."""
+    if len(_LONG_CODE_CACHE) > 500:
+        _LONG_CODE_CACHE.clear()
+
+    markup = InlineKeyboardMarkup()
+    buttons = []
+
+    for code in codes:
+        btn_label = f"📊 {code[:22]}..." if len(code) > 22 else f"📊 {code}"
+        raw_bytes = code.encode("utf-8")
+        if len(raw_bytes) <= 50:
+            cb_data = f"gen_bc:{code}"
+        else:
+            code_hash = hashlib.md5(raw_bytes).hexdigest()[:12]
+            _LONG_CODE_CACHE[code_hash] = code
+            cb_data = f"gen_bch:{code_hash}"
+
+        buttons.append(InlineKeyboardButton(text=btn_label, callback_data=cb_data))
+
+    max_len = max(len(c) for c in codes) if codes else 0
+    row_width = 1 if max_len > 15 else 2
+
+    for i in range(0, len(buttons), row_width):
+        markup.row(*buttons[i : i + row_width])
+
+    return markup
+

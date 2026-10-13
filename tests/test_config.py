@@ -8,6 +8,8 @@ from config import load_config
 
 def test_config_fails_without_token(monkeypatch):
     """Без BOT_TOKEN бот не должен запускаться."""
+    import dotenv
+    monkeypatch.setattr(dotenv, "load_dotenv", lambda *args, **kwargs: None)
     monkeypatch.delenv("BOT_TOKEN", raising=False)
     with pytest.raises(SystemExit):
         load_config()

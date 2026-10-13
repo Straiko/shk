@@ -9,6 +9,7 @@ from utils.subscription import is_subscribed, CHANNEL_LINK, MAX_BOT_LINK
 logger = logging.getLogger(__name__)
 
 CHANGELOG = (
+    "v3.2.0 — Inline-кнопки для генерации штрих-кода из найденных кодов на фото\n"
     "v3.1.0 — Проверка подписки на канал, автосообщения\n"
     "v3.0.0 — Рефакторинг: модульная архитектура, безопасность, логирование\n"
     "v2.0.0 — Production Ready: многопоточность, rate limiting, автоочистка\n"
