@@ -5,8 +5,8 @@ SHK Bot — Telegram-бот для сканирования и генераци�
 """
 
 import logging
+from logging.handlers import RotatingFileHandler
 import time
-import os
 
 from config import load_config
 from bot import create_bot
@@ -16,13 +16,18 @@ from handlers import commands, photo, barcode, admin
 
 
 def setup_logging() -> None:
-    """Настроить логирование в консоль + файл."""
+    """Настроить логирование в консоль + файл с ротацией."""
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
         handlers=[
             logging.StreamHandler(),
-            logging.FileHandler("bot.log", encoding="utf-8"),
+            RotatingFileHandler(
+                "bot.log",
+                maxBytes=5 * 1024 * 1024,  # 5 МБ на файл
+                backupCount=3,
+                encoding="utf-8",
+            ),
         ],
     )
 
@@ -57,10 +62,16 @@ def main() -> None:
         config.channel_username,
     )
 
+    # Пропускаем накопившиеся за время простоя обновления только один раз при старте
+    try:
+        bot.skip_pending()
+    except Exception:
+        logger.warning("⚠️ Не удалось очистить старые обновления при старте, продолжаем запуск...")
+
     # Запуск с автоматическим переподключением
     while True:
         try:
-            bot.infinity_polling(timeout=60, long_polling_timeout=60, skip_pending=True)
+            bot.infinity_polling(timeout=60, long_polling_timeout=60, skip_pending=False)
         except KeyboardInterrupt:
             logger.info("👋 Бот остановлен пользователем")
             logging.shutdown()
