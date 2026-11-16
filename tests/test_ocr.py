@@ -127,6 +127,65 @@ def test_extract_codes_rdc_and_warehouse_prefixes():
     assert _extract_codes("CUSTOM- 5566778899") == ["CUSTOM-5566778899"]
 
 
+def test_scan_text_ocr_timeout_retry_success(monkeypatch, tmp_path):
+    """Если первая попытка завершилась по таймауту, вторая успешная возвращает результат."""
+    import requests
+    monkeypatch.setenv("YANDEX_API_KEY", "AQVN_test_key")
+    img_file = tmp_path / "test.jpg"
+    img_file.write_bytes(b"dummy")
+
+    calls = 0
+
+    class MockResponse:
+        status_code = 200
+
+        def json(self):
+            return {
+                "result": {
+                    "textAnnotation": {
+                        "fullText": "RDC_9988776655"
+                    }
+                }
+            }
+
+    def mock_post(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise requests.Timeout("Connection timed out")
+        return MockResponse()
+
+    monkeypatch.setattr("requests.post", mock_post)
+
+    from services.ocr import scan_text_ocr
+    result = scan_text_ocr(str(img_file))
+    assert result == ["RDC_9988776655"]
+    assert calls == 2
+
+
+def test_scan_text_ocr_timeout_exhausted(monkeypatch, tmp_path):
+    """Если все попытки завершились таймаутом, возвращается пустой список без падения."""
+    import requests
+    monkeypatch.setenv("YANDEX_API_KEY", "AQVN_test_key")
+    img_file = tmp_path / "test.jpg"
+    img_file.write_bytes(b"dummy")
+
+    calls = 0
+
+    def mock_post(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        raise requests.Timeout("Timeout")
+
+    monkeypatch.setattr("requests.post", mock_post)
+
+    from services.ocr import scan_text_ocr
+    result = scan_text_ocr(str(img_file))
+    assert result == []
+    assert calls == 2
+
+
+
 
 
 

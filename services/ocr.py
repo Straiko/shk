@@ -63,14 +63,31 @@ def scan_text_ocr(photo_path: str, api_key: str | None = None) -> list[str]:
             "content": image_base64,
         }
 
-        response = requests.post(YANDEX_OCR_URL, headers=headers, json=payload, timeout=10)
+        # Request OCR with increased timeout and retry logic on timeout
+        max_attempts = 2
+        response = None
+        for attempt in range(1, max_attempts + 1):
+            try:
+                response = requests.post(YANDEX_OCR_URL, headers=headers, json=payload, timeout=25)
+                break
+            except requests.Timeout:
+                if attempt < max_attempts:
+                    logger.warning(
+                        "Yandex OCR API timeout (попытка %d/%d), повторяем запрос...",
+                        attempt,
+                        max_attempts,
+                    )
+                    continue
+                logger.warning("Yandex OCR API timeout после %d попыток", max_attempts)
+                return []
 
-        if response.status_code != 200:
-            logger.warning(
-                "Yandex OCR вернул ошибку %d: %s",
-                response.status_code,
-                response.text[:250],
-            )
+        if response is None or response.status_code != 200:
+            if response is not None:
+                logger.warning(
+                    "Yandex OCR вернул ошибку %d: %s",
+                    response.status_code,
+                    response.text[:250],
+                )
             return []
 
         data = response.json()
