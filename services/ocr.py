@@ -125,10 +125,13 @@ def _extract_codes(text: str) -> list[str]:
     text = re.sub(r"\b(РДЦ|РДС)[_\s\-]+(?=\d{5,})", "RDC_", text, flags=re.IGNORECASE)
     text = re.sub(r"\b(ВБ)[_\s\-]+(?=\d{5,})", "WB_", text, flags=re.IGNORECASE)
 
-    # 3. Join ANY short Latin prefix (2-8 letters, e.g. RDC, BOX, KGT, SKU, OZON, WB, PAL, etc.)
+    # 3. Join Wildberries 'ii' prefix WITHOUT underscore (WB codes are 'ii123...', not 'ii_123...')
+    text = re.sub(r"\b([iI]{2})\s+(?=\d{5,})", "ii", text)
+
+    # 4. Join ANY other short Latin prefix (2-8 letters, e.g. RDC, BOX, KGT, SKU, OZON, WB, PAL, etc.)
     # if OCR separated it from a long number (6+ digits) with spaces or dashes.
-    # Exclude common device brand logos like ZEBRA.
-    text = re.sub(r"\b(?!(?:ZEBRA)\b)([A-Za-z]{2,8})\s+(?=\d{6,})", r"\1_", text)
+    # Exclude common device brand logos like ZEBRA, and Wildberries 'ii'.
+    text = re.sub(r"\b(?!(?:ZEBRA|[iI]{2})\b)([A-Za-z]{2,8})\s+(?=\d{6,})", r"\1_", text)
 
     codes: list[str] = []
     for word in text.split():
@@ -146,6 +149,9 @@ def _extract_codes(text: str) -> list[str]:
 
         # Strip surrounding punctuation
         clean = w.strip(".,;:!?\'\"()[]{}")
+
+        # Strip any underscore or dash accidentally attached to Wildberries 'ii' prefix
+        clean = re.sub(r"^[iI]{2}[_\-]+(?=\d{5,})", "ii", clean)
 
         # Handle cases where OCR sees single 'i' or 'l' before 10-12 digits without consuming any digits
         clean = re.sub(r"^[iIl](?=\d{10,12}$)", "ii", clean)

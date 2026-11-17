@@ -125,6 +125,14 @@ def test_extract_codes_cyrillic_short_i_wb_prefix():
     assert result == ["ii11039592226"]
 
 
+def test_extract_codes_wb_prefix_no_underscore():
+    """Wildberries 'ii' prefix separated by space or with underscore must be normalized without underscore."""
+    assert _extract_codes("ii 772345678") == ["ii772345678"]
+    assert _extract_codes("ii_772345678") == ["ii772345678"]
+    assert _extract_codes("II 772345678") == ["ii772345678"]
+    assert _extract_codes("ii-772345678") == ["ii772345678"]
+
+
 def test_extract_codes_rdc_and_warehouse_prefixes():
     """Warehouse prefixes (RDC, BOX, KGT, SKU, WB, etc.) separated by space or dash should be preserved."""
     assert _extract_codes("RDC_1525415416") == ["RDC_1525415416"]
