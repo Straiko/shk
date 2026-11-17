@@ -6,7 +6,7 @@ import logging
 import os
 import re
 import requests
-from PIL import Image
+from PIL import Image, ImageEnhance
 
 logger = logging.getLogger(__name__)
 
@@ -37,9 +37,11 @@ def scan_text_ocr(photo_path: str, api_key: str | None = None) -> list[str]:
 
     try:
         # Нормализуем любое входное изображение (WebP, RGBA и т.д.) в стандартный JPEG
+        # и слегка усиливаем контрастность для четкого отделения чернил от фона
         try:
             with Image.open(photo_path) as img:
                 rgb_img = img.convert("RGB")
+                rgb_img = ImageEnhance.Contrast(rgb_img).enhance(1.25)
                 buf = io.BytesIO()
                 rgb_img.save(buf, format="JPEG", quality=95)
                 image_bytes = buf.getvalue()
@@ -56,10 +58,15 @@ def scan_text_ocr(photo_path: str, api_key: str | None = None) -> list[str]:
         if folder_id:
             headers["x-folder-id"] = folder_id
 
+        # Модель OCR: handwritten на порядок лучше распознает рукописные коды (ii -> ii вместо 11).
+        # Внимание: модель handwritten не поддерживает wildcard ["*"] и требует явного указания языков.
+        model = os.getenv("YANDEX_OCR_MODEL", "handwritten").strip() or "handwritten"
+        language_codes = ["en", "ru"] if model == "handwritten" else ["*"]
+
         payload = {
             "mimeType": "JPEG",
-            "languageCodes": ["*"],
-            "model": "page",
+            "languageCodes": language_codes,
+            "model": model,
             "content": image_base64,
         }
 

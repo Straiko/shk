@@ -86,11 +86,20 @@ def test_scan_text_ocr_success(monkeypatch, tmp_path):
                 }
             }
 
-    monkeypatch.setattr("requests.post", lambda *args, **kwargs: MockResponse())
+    recorded_kwargs = {}
+
+    def mock_post(*args, **kwargs):
+        nonlocal recorded_kwargs
+        recorded_kwargs = kwargs
+        return MockResponse()
+
+    monkeypatch.setattr("requests.post", mock_post)
 
     from services.ocr import scan_text_ocr
     result = scan_text_ocr(str(img_file))
     assert result == ["ii1234567890"]
+    assert recorded_kwargs["json"]["model"] == "handwritten"
+    assert recorded_kwargs["json"]["languageCodes"] == ["en", "ru"]
 
 
 def test_extract_codes_exclamation_marks_wb_prefix():
