@@ -1,5 +1,7 @@
 """Сканирование штрих-кодов и QR-кодов с изображений."""
 
+from __future__ import annotations
+
 import logging
 from PIL import Image, ImageEnhance, ImageOps
 import zxingcpp
@@ -7,7 +9,7 @@ import zxingcpp
 logger = logging.getLogger(__name__)
 
 
-def scan_barcodes(img: Image.Image) -> list[zxingcpp.Barcode]:
+def scan_barcodes(img: Image.Image) -> list:
     """
     Сканировать штрих-коды и 2D-коды (DataMatrix, QR, Code128 и т.д.) с изображения.
 
@@ -18,7 +20,7 @@ def scan_barcodes(img: Image.Image) -> list[zxingcpp.Barcode]:
     4. Повышенная резкость
     5. Увеличение x2
     6. Центральный кроп (для мелких кодов в центре кадра)
-    7. Бинаризатор GlobalHistogram (эффективен для белых крышек/контрастных зон)
+    7. Бинаризатор GlobalHistogram (если поддерживается версией zxing-cpp)
     """
     try:
         if img.mode != "RGB":
@@ -50,11 +52,16 @@ def scan_barcodes(img: Image.Image) -> list[zxingcpp.Barcode]:
             if results:
                 return results
 
-        # Повторный проход с GlobalHistogram бинаризатором (лучше читает матричные коды на крышках)
-        for attempt_img in attempts[:4]:
-            results = zxingcpp.read_barcodes(attempt_img, binarizer=zxingcpp.Binarizer.GlobalHistogram)
-            if results:
-                return results
+        # Повторный проход с GlobalHistogram бинаризатором (если поддерживается установленной версией zxing-cpp)
+        binarizer = getattr(getattr(zxingcpp, "Binarizer", None), "GlobalHistogram", None)
+        if binarizer is not None:
+            for attempt_img in attempts[:4]:
+                try:
+                    results = zxingcpp.read_barcodes(attempt_img, binarizer=binarizer)
+                    if results:
+                        return results
+                except (TypeError, Exception):
+                    break
 
     except Exception:
         logger.exception("Ошибка сканирования штрих-кода")
